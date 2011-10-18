@@ -1,0 +1,17 @@
+{
+  "author": "Einar Otto Stangvik <einaros@gmail.com>",
+  "name": "trig-paperjs",
+  "version": "0.0.1",
+  "homepage": "http://js.2x.io/trig",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/einaros/trig-paperjs.git"
+  },
+  "engines": {
+    "node": ">v0.4.0"
+  },
+  "dependencies": {
+      "express": "latest"
+  },
+  "devDependencies": {}
+}
