@@ -1,6 +1,6 @@
 <html>
 	<head>
-		<title>three.js webgl</title>
+		<title>make stuff happen</title>
 		<meta http-equiv="content-type" content="text/html; charset=utf-8">
 		<style type="text/css">
 		body {
@@ -9,7 +9,6 @@
 			margin: 0px;
 			overflow: hidden;
 		}
-		#oldie { background-color: #ddd !important }
 		#info {
 			position: absolute;
 			top: 30px; left: 150px; width: 800px;
@@ -19,19 +18,6 @@
 			font-size: 13px;
 			text-align: left;
 			z-index:100;
-		}
-		#options {
-			position: absolute;
-			top: 10px; left: 10px; width: 800px;
-			color: #000000;
-			padding: 5px;
-			font-family: Monospace;
-			font-size: 13px;
-			text-align: left;
-			z-index:100;
-		}
-		video {
-			display: none;
 		}
 		</style>
 		<script type="text/javascript" src="Three.js"></script>
@@ -52,8 +38,8 @@
               , mouse2D
 			  , z = 500
               , ay = 0
-              , ax = 0
-              , spinRadius = 1000;
+              , ax = Math.PI/4
+              , spinRadius = 300;
 
             var keys = {
                 left: false,
@@ -76,22 +62,26 @@
 				//scene.fog = new THREE.FogExp2(0x000000, 0.0009);
                 projector = new THREE.Projector();
 				var geometry = new THREE.Geometry();
-				geometry.colors = colors;
-				material = new THREE.ParticleBasicMaterial({size: 64, map: THREE.ImageUtils.loadTexture('particle.png', THREE.UVMapping), vertexColors: true});
+                // geometry.colors = colors;
+				for (var i = 0, l = 10000; i < l; ++i) {
+					geometry.vertices.push(new THREE.Vertex(new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)));
+				}
+				material = new THREE.ParticleBasicMaterial({size: 64, map: THREE.ImageUtils.loadTexture('particle.png', THREE.UVMapping), vertexColors: false});
 				material.color.setHSV(1.0, 0.2, 0.8);
 				particles = new THREE.ParticleSystem(geometry, material);
+				particles.dynamic = true;
 				particles.sortParticles = true;
 				particles.updateMatrix();
 				scene.add(particles);
                 var plane = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000, 20, 20), new THREE.MeshBasicMaterial({color: 0x555555, wireframe: true}));
-                plane.rotation.x = Math.PI/2;
+                plane.rotation.x = -Math.PI/2;
                 scene.add(plane); 
 				var light = new THREE.DirectionalLight(0xffffff);
 				light.position.x = 0;
 				light.position.y = 0;
 				light.position.z = 1;
-				scene.addLight(light);
-				renderer = new THREE.WebGLRenderer({ clearAlpha: 1 });
+				scene.add(light);
+				renderer = new THREE.WebGLRenderer({ clearAlpha: 1, antialias: true });
 				renderer.setSize(window.innerWidth, window.innerHeight);
 				container.appendChild(renderer.domElement);
 				stats = new Stats();
@@ -109,35 +99,40 @@
 				animate();
 			}
 			
+			var roundRobin = 0;
+			
 			function onDocumentMouseMove(event) {
-                mouse2D.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-                mouse2D.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-                var len = colors.length;
-				for (var i = 0; i < 2; i++) {
-					var x = 2000 * Math.random() - 1000;
-                    var y = 0;
-					var z = 2000 * Math.random() - 1000;
-					vector = new THREE.Vector3(x, y, z);
-					particles.geometry.vertices.push(new THREE.Vertex(vector));
-					colors[len + i] = new THREE.Color(0xffffff);
-					colors[len + i].setHSV((x+1000)/2000, 1.0, 1.0);
-				}
-                particles.geometry.__dirtyVertices = true
+                mouse2D.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse2D.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                var ray = projector.pickingRay(mouse2D.clone(), camera);
+                var intersects = ray.intersectScene(scene);
+                if (intersects.length > 0) {
+                    var intersector = getRealIntersector(intersects);
+                    if (intersector) {
+                        var i = intersector[0];
+                        var v = particles.geometry.vertices[roundRobin];
+                        roundRobin += 1;
+                        v.position.x = i.point.x;
+                        v.position.y = i.point.y;
+                        v.position.z = i.point.z;
+                        particles.geometry.__dirtyVertices = true;
+                        particles.geometry.__dirtyColors = true;
+                    }
+                }
 			}
 
             function onKeyDown(event) {
                 if (event.which == 39) keys.right = true;
                 else if (event.which == 37) keys.left = true;
-                else if (event.which == 38) keys.down = true;
-                else if (event.which == 40) keys.up = true;
+                else if (event.which == 40) keys.down = true;
+                else if (event.which == 38) keys.up = true;
             }
 
             function onKeyUp(event) {
                 if (event.which == 39) keys.right = false;
                 else if (event.which == 37) keys.left = false;
-                else if (event.which == 38) keys.down = false;
-                else if (event.which == 40) keys.up = false;
+                else if (event.which == 40) keys.down = false;
+                else if (event.which == 38) keys.up = false;
             }
 
 			function onWindowResize(event) {
@@ -154,7 +149,8 @@
 
             function getRealIntersector(intersects) {
                 for(i = 0; i < intersects.length; i++) {
-                    intersector = intersects[i];
+                    var intersector = intersects[i];
+                    return intersects;
                     /*if (intersector.object != rollOverMesh) {
                         return intersector;
                     }*/
@@ -164,27 +160,20 @@
 
 			function render() {
 				var time = new Date().getTime() * 0.00005;
-                if (keys.up == true) ax += 20;
-                else if (keys.down == true) ax -= 20;
+                if (keys.up == true) ax += .1;
+                else if (keys.down == true) ax -= .1;
                 if (keys.right == true) ay += .1;
                 else if (keys.left == true) ay -= .1;
-				camera.position.x += (Math.sin(ay) * spinRadius - camera.position.x) * 0.05;
-				camera.position.z += (Math.cos(ay) * spinRadius - camera.position.z) * 0.05;
-				camera.position.y += (ax - camera.position.y) * 0.05;
+                var radius = Math.sin(ax) * spinRadius;
+				camera.position.x += (Math.sin(ay) * radius - camera.position.x) * 0.05;
+				camera.position.z += (Math.cos(ay) * radius - camera.position.z) * 0.05;
+				camera.position.y += (Math.cos(ax) * spinRadius - camera.position.y) * 0.05;
                 camera.lookAt(cameraTarget);
-                var ray = projector.pickingRay(mouse2D.clone(), camera);
-                var intersects = ray.intersectScene( scene );
-                if (intersects.length > 0) {
-                    var intersector = getRealIntersector(intersects);
-                    if (intersector) {
-                    }
-                }
 				renderer.render(scene, camera);
 			}
 		</script>
 	</head>
 	<body onload="init();">
 		<div id="info"></div>
-		<div id="options"></div>
 	</body>
 </html>
