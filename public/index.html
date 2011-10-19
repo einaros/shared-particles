@@ -5,9 +5,15 @@
 		<style type="text/css">
 		body {
 			font-family: Monospace;
-			background-color: #f0f0f0;
+			background-color: #000;
 			margin: 0px;
 			overflow: hidden;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -o-user-select: none;
+            user-select: none;
+            cursor: pointer; 
 		}
 		#info {
 			position: absolute;
@@ -19,7 +25,29 @@
 			text-align: left;
 			z-index:100;
 		}
+        #keys {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            opacity: 0.5;
+            color: #fff;
+            padding: 10px;
+            text-align: right;
+        }
+        #notice {
+            position: absolute;
+            top: 0;
+            left: 40%;
+            right: 40%;
+            opacity: 0.5;
+            color: #fff;
+            background: #000;
+            padding: 10px;
+            text-align: center;
+        }
 		</style>
+        <script type="text/javascript" src="/socket.io/socket.io.js"></script>
 		<script type="text/javascript" src="Three.js"></script>
 		<script type="text/javascript" src="Detector.js"></script>
 		<script type="text/javascript" src="RequestAnimationFrame.js"></script>
@@ -33,28 +61,33 @@
               , projector
 			  , renderer
 			  , particles
-			  , material
-              , colors = []
               , mouse2D
 			  , z = 500
               , ay = 0
               , ax = Math.PI/4
-              , spinRadius = 300;
-
-            var keys = {
-                left: false,
-                right: false,
-                up: false,
-                down: false
-            };
+              , spinRadius = 1500
+              , particlesPerBatch = 5
+              , roundRobin = 0
+              , lookVector = new THREE.Vector3(0, 0, 0)
+              , input = {
+                    left: false,
+                    right: false,
+                    up: false,
+                    down: false,
+                    shift: false,
+                    mouseDown: false
+                }
+              , socket = io.connect();
 
 			function init() {
 				if (!Detector.webgl) {
 					Detector.addGetWebGLMessage();
 					return;
 				}
-				container = document.createElement('div');
+
+                container = document.createElement('div');
 				document.body.appendChild(container);
+
 				camera = new THREE.CombinedCamera(window.innerWidth, window.innerHeight, 45, 1, 10000, -2000, 10000);
 				camera.position.z = 1400;
                 cameraTarget = new THREE.Vector3(0, 0, 0);
@@ -62,77 +95,104 @@
 				//scene.fog = new THREE.FogExp2(0x000000, 0.0009);
                 projector = new THREE.Projector();
 				var geometry = new THREE.Geometry();
-                // geometry.colors = colors;
+                
+                var colors = [];
+                geometry.colors = colors;
 				for (var i = 0, l = 10000; i < l; ++i) {
-					geometry.vertices.push(new THREE.Vertex(new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)));
+					geometry.vertices.push(new THREE.Vertex(new THREE.Vector3(0, 10000, 0)));
+                    colors[i] = new THREE.Color(0xffffff);
+                    colors[i].setHSV((i+1000)/10000, 1.0, 1.0);
 				}
-				material = new THREE.ParticleBasicMaterial({size: 64, map: THREE.ImageUtils.loadTexture('particle.png', THREE.UVMapping), vertexColors: false});
+				var material = new THREE.ParticleBasicMaterial({color: 0xFFFFFF, size: 64, map: THREE.ImageUtils.loadTexture('particle.png'), blending: THREE.AdditiveBlending, transparent: true, vertexColors: true});
 				material.color.setHSV(1.0, 0.2, 0.8);
 				particles = new THREE.ParticleSystem(geometry, material);
-				particles.dynamic = true;
 				particles.sortParticles = true;
 				particles.updateMatrix();
 				scene.add(particles);
+                
                 var plane = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000, 20, 20), new THREE.MeshBasicMaterial({color: 0x555555, wireframe: true}));
                 plane.rotation.x = -Math.PI/2;
                 scene.add(plane); 
-				var light = new THREE.DirectionalLight(0xffffff);
-				light.position.x = 0;
-				light.position.y = 0;
-				light.position.z = 1;
-				scene.add(light);
-				renderer = new THREE.WebGLRenderer({ clearAlpha: 1, antialias: true });
+				
+				renderer = new THREE.WebGLRenderer({ clearAlpha: true, antialias: true });
+                //renderer.setClearColor(new THREE.Color(0, 1));
 				renderer.setSize(window.innerWidth, window.innerHeight);
 				container.appendChild(renderer.domElement);
-				stats = new Stats();
+				
+                stats = new Stats();
 				stats.domElement.style.position = 'absolute';
 				stats.domElement.style.top = '0px';
 				container.appendChild(stats.domElement);
+                
                 mouse2D = new THREE.Vector3(0, 10000, 0.5);
-				document.addEventListener('mousemove', onDocumentMouseMove, false);
-				//document.addEventListener('touchstart', onDocumentTouchStart, false);
-				//document.addEventListener('touchmove', onDocumentTouchMove, false);
-				//document.addEventListener('mousewheel', onDocumentMouseWheel, false);
+				document.addEventListener('mousemove', onMouseMove, false);
+				document.addEventListener('mousedown', onMouseDown, false);
+				document.addEventListener('mouseup', onMouseUp, false);
                 document.addEventListener('keydown', onKeyDown, false);
                 document.addEventListener('keyup', onKeyUp, false);
 				window.addEventListener('resize', onWindowResize, false);
+
 				animate();
 			}
 			
-			var roundRobin = 0;
-			
-			function onDocumentMouseMove(event) {
+			function onMouseMove(event) {
                 mouse2D.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse2D.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                if (!input.mouseDown) return;
                 var ray = projector.pickingRay(mouse2D.clone(), camera);
                 var intersects = ray.intersectScene(scene);
                 if (intersects.length > 0) {
                     var intersector = getRealIntersector(intersects);
                     if (intersector) {
-                        var i = intersector[0];
-                        var v = particles.geometry.vertices[roundRobin];
-                        roundRobin += 1;
-                        v.position.x = i.point.x;
-                        v.position.y = i.point.y;
-                        v.position.z = i.point.z;
-                        particles.geometry.__dirtyVertices = true;
-                        particles.geometry.__dirtyColors = true;
+                        var s = [];
+                        for (var i = 0; i < particlesPerBatch; ++i) {
+                            var v = particles.geometry.vertices[roundRobin];
+                            roundRobin = roundRobin < 9999 ? roundRobin + 1 : 0;
+                            v.position.x = intersector.point.x + Math.random() * 5;
+                            v.position.y = 0;
+                            v.position.z = intersector.point.z + Math.random() * 5;
+                            s.push([v.position.x, v.position.z]);
+                        }
+                        socket.emit('p', s);
                     }
                 }
 			}
 
+            socket.on('p', function(data) {
+                for (var i = 0; i < particlesPerBatch; ++i) {
+                    var v = particles.geometry.vertices[roundRobin];
+                    roundRobin = roundRobin < 9999 ? roundRobin + 1 : 0;
+                    try {
+                        v.position.x = data[i][0];
+                        v.position.y = 0;
+                        v.position.z = data[i][1];
+                    } 
+                    catch(e) {}
+                }
+            });
+
+            function onMouseDown() {
+                input.mouseDown = true; 
+            }
+
+            function onMouseUp() {
+                input.mouseDown = false; 
+            }
+
             function onKeyDown(event) {
-                if (event.which == 39) keys.right = true;
-                else if (event.which == 37) keys.left = true;
-                else if (event.which == 40) keys.down = true;
-                else if (event.which == 38) keys.up = true;
+                if (event.which == 39) input.right = true;
+                else if (event.which == 37) input.left = true;
+                else if (event.which == 40) input.down = true;
+                else if (event.which == 38) input.up = true;
+                else if (event.which == 16) input.shift = true;
             }
 
             function onKeyUp(event) {
-                if (event.which == 39) keys.right = false;
-                else if (event.which == 37) keys.left = false;
-                else if (event.which == 40) keys.down = false;
-                else if (event.which == 38) keys.up = false;
+                if (event.which == 39) input.right = false;
+                else if (event.which == 37) input.left = false;
+                else if (event.which == 40) input.down = false;
+                else if (event.which == 38) input.up = false;
+                else if (event.which == 16) input.shift = false;
             }
 
 			function onWindowResize(event) {
@@ -150,30 +210,75 @@
             function getRealIntersector(intersects) {
                 for(i = 0; i < intersects.length; i++) {
                     var intersector = intersects[i];
-                    return intersects;
-                    /*if (intersector.object != rollOverMesh) {
-                        return intersector;
-                    }*/
+                    return intersector;
                 }
                 return null;
             }
 
+            function processKeys() {
+                if (input.up == true) {
+                    if (input.shift) {
+                        if (lookVector.z <= 1000) lookVector.z += 100;
+                    }
+                    else if (spinRadius > 100) spinRadius -= 100;
+                }
+                else if (input.down == true) {
+                    if (input.shift) {
+                        if (lookVector.z >= -1000) lookVector.z -= 100;
+                    }
+                    else spinRadius += 100;
+                }
+                if (input.right == true) {
+                    if (input.shift) {
+                        if (lookVector.x <= 1000) lookVector.x += 100;
+                    }
+                    else ay += .1;
+                }
+                else if (input.left == true) {
+                    if (input.shift) {
+                        if (lookVector.x >= -1000) lookVector.x -= 100;
+                    }
+                    else ay -= .1;
+                }
+            }
+
 			function render() {
-				var time = new Date().getTime() * 0.00005;
-                if (keys.up == true) ax += .1;
-                else if (keys.down == true) ax -= .1;
-                if (keys.right == true) ay += .1;
-                else if (keys.left == true) ay -= .1;
+                processKeys();
                 var radius = Math.sin(ax) * spinRadius;
-				camera.position.x += (Math.sin(ay) * radius - camera.position.x) * 0.05;
-				camera.position.z += (Math.cos(ay) * radius - camera.position.z) * 0.05;
+                cameraTarget.x += (lookVector.x - cameraTarget.x) * 0.05;
+                cameraTarget.z += (lookVector.z - cameraTarget.z) * 0.05;
+				camera.position.x += (cameraTarget.x + Math.sin(ay) * radius - camera.position.x) * 0.05;
+				camera.position.z += (cameraTarget.z + Math.cos(ay) * radius - camera.position.z) * 0.05;
 				camera.position.y += (Math.cos(ax) * spinRadius - camera.position.y) * 0.05;
                 camera.lookAt(cameraTarget);
+                for (var i = 0, l = particles.geometry.vertices.length; i < l; ++i) {
+                    var p = particles.geometry.vertices[i];
+                    if (p.position.y < 10000) {
+                        p.position.x += Math.random() * 3;
+                        p.position.z += Math.random() * 3;
+                        p.position.y += Math.random() * 3;
+                    }
+                }
+                particles.geometry.__dirtyVertices = true;
 				renderer.render(scene, camera);
 			}
 		</script>
 	</head>
 	<body onload="init();">
 		<div id="info"></div>
+        <div id="notice">Draw on the grid, please.</div>
+        <div id="keys">
+            Multiple users may be active.<br/>
+            Rotate View: Left and right arrows.<br/>
+            Zoom: Up and down arrows.<br/>
+            Move: Shift + arrow keys.<br/>
+            Paint: Press mouse + drag.<br/>
+        </div>
+        <script type="text/javascript">
+        var sc_project=6230998; 
+        var sc_invisible=1; 
+        var sc_security="2d430983"; 
+        </script>
+        <script type="text/javascript" src="http://www.statcounter.com/counter/counter.js"></script>
 	</body>
 </html>

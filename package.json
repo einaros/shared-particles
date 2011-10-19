@@ -11,7 +11,8 @@
     "node": ">v0.4.0"
   },
   "dependencies": {
-      "express": "latest"
+    "express": "latest",
+    "socket.io": "latest"
   },
   "devDependencies": {}
 }
