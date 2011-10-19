@@ -158,8 +158,8 @@
                 }
 			}
 
-            socket.on('p', function(data) {
-                for (var i = 0; i < particlesPerBatch; ++i) {
+            function plot(data) {
+                for (var i = 0, l = Math.min(particlesPerBatch, data.length); i < l; ++i) {
                     var v = particles.geometry.vertices[roundRobin];
                     roundRobin = roundRobin < 9999 ? roundRobin + 1 : 0;
                     try {
@@ -169,7 +169,8 @@
                     } 
                     catch(e) {}
                 }
-            });
+            }
+            socket.on('p', plot);
 
             function onMouseDown() {
                 input.mouseDown = true; 
