@@ -65,6 +65,7 @@
               , ay = 0
               , ax = Math.PI/4
               , spinRadius = 1500
+              , particleCount = 20000
               , particlesPerBatch = 5
               , particleIndex = 0
               , lookVector = new THREE.Vector3(0, 0, 0)
@@ -97,10 +98,10 @@
                 
                 var colors = [];
                 geometry.colors = colors;
-                for (var i = 0, l = 10000; i < l; ++i) {
+                for (var i = 0, l = particleCount; i < l; ++i) {
                     geometry.vertices.push(new THREE.Vertex(new THREE.Vector3(0, 10000, 0)));
                     colors[i] = new THREE.Color(0xffffff);
-                    colors[i].setHSV((i+1000)/10000, 1.0, 1.0);
+                    colors[i].setHSV(i/particleCount, 1.0, 1.0);
                 }
                 var material = new THREE.ParticleBasicMaterial({color: 0xFFFFFF, size: 64, map: THREE.ImageUtils.loadTexture('particle.png'), blending: THREE.AdditiveBlending, transparent: true, vertexColors: true});
                 material.color.setHSV(1.0, 0.2, 0.8);
@@ -161,7 +162,7 @@
             function plot(data) {
                 for (var i = 0, l = Math.min(particlesPerBatch, data.length); i < l; ++i) {
                     var v = particles.geometry.vertices[particleIndex];
-                    particleIndex = particleIndex < 9999 ? particleIndex + 1 : 0;
+                    particleIndex = particleIndex < particleCount-1 ? particleIndex + 1 : 0;
                     try {
                         v.position.x = data[i][0];
                         v.position.y = 0;
