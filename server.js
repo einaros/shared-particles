@@ -9,3 +9,6 @@ io.sockets.on('connection', function(socket) {
         socket.broadcast.emit('p', message);
     });
 });
+process.on('uncaughtException', function (err) {
+    console.log('Caught exception: ' + err);
+});
