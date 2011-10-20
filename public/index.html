@@ -1,30 +1,30 @@
 <html>
-	<head>
-		<title>make stuff happen</title>
-		<meta http-equiv="content-type" content="text/html; charset=utf-8">
-		<style type="text/css">
-		body {
-			font-family: Monospace;
-			background-color: #000;
-			margin: 0px;
-			overflow: hidden;
+    <head>
+        <title>make stuff happen</title>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <style type="text/css">
+        body {
+            font-family: Monospace;
+            background-color: #000;
+            margin: 0px;
+            overflow: hidden;
             -webkit-user-select: none;
             -khtml-user-select: none;
             -moz-user-select: none;
             -o-user-select: none;
             user-select: none;
             cursor: pointer; 
-		}
-		#info {
-			position: absolute;
-			top: 30px; left: 150px; width: 800px;
-			color: #000000;
-			padding: 5px;
-			font-family: Monospace;
-			font-size: 13px;
-			text-align: left;
-			z-index:100;
-		}
+        }
+        #info {
+            position: absolute;
+            top: 30px; left: 150px; width: 800px;
+            color: #000000;
+            padding: 5px;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: left;
+            z-index:100;
+        }
         #keys {
             position: absolute;
             right: 0;
@@ -46,28 +46,27 @@
             padding: 10px;
             text-align: center;
         }
-		</style>
+        </style>
         <script type="text/javascript" src="/socket.io/socket.io.js"></script>
-		<script type="text/javascript" src="Three.js"></script>
-		<script type="text/javascript" src="Detector.js"></script>
-		<script type="text/javascript" src="RequestAnimationFrame.js"></script>
-		<script type="text/javascript" src="Stats.js"></script>
-		<script type="text/javascript">
-			var container
-			  , stats
-			  , camera
+        <script type="text/javascript" src="Three.js"></script>
+        <script type="text/javascript" src="Detector.js"></script>
+        <script type="text/javascript" src="RequestAnimationFrame.js"></script>
+        <script type="text/javascript" src="Stats.js"></script>
+        <script type="text/javascript">
+            var container
+              , stats
+              , camera
               , cameraTarget
-			  , scene
+              , scene
               , projector
-			  , renderer
-			  , particles
+              , renderer
+              , particles
               , mouse2D
-			  , z = 500
               , ay = 0
               , ax = Math.PI/4
               , spinRadius = 1500
               , particlesPerBatch = 5
-              , roundRobin = 0
+              , particleIndex = 0
               , lookVector = new THREE.Vector3(0, 0, 0)
               , input = {
                     left: false,
@@ -79,63 +78,65 @@
                 }
               , socket = io.connect();
 
-			function init() {
-				if (!Detector.webgl) {
-					Detector.addGetWebGLMessage();
-					return;
-				}
+            function init() {
+                if (!Detector.webgl) {
+                    Detector.addGetWebGLMessage();
+                    return;
+                }
 
                 container = document.createElement('div');
-				document.body.appendChild(container);
+                document.body.appendChild(container);
 
-				camera = new THREE.CombinedCamera(window.innerWidth, window.innerHeight, 45, 1, 10000, -2000, 10000);
-				camera.position.z = 1400;
+                camera = new THREE.CombinedCamera(window.innerWidth, window.innerHeight, 45, 1, 10000, -2000, 10000);
+                camera.position.z = 1400;
                 cameraTarget = new THREE.Vector3(0, 0, 0);
-				scene = new THREE.Scene();
-				//scene.fog = new THREE.FogExp2(0x000000, 0.0009);
+                scene = new THREE.Scene();
+                //scene.fog = new THREE.FogExp2(0x000000, 0.0009);
                 projector = new THREE.Projector();
-				var geometry = new THREE.Geometry();
+                var geometry = new THREE.Geometry();
                 
                 var colors = [];
                 geometry.colors = colors;
-				for (var i = 0, l = 10000; i < l; ++i) {
-					geometry.vertices.push(new THREE.Vertex(new THREE.Vector3(0, 10000, 0)));
+                for (var i = 0, l = 10000; i < l; ++i) {
+                    geometry.vertices.push(new THREE.Vertex(new THREE.Vector3(0, 10000, 0)));
                     colors[i] = new THREE.Color(0xffffff);
                     colors[i].setHSV((i+1000)/10000, 1.0, 1.0);
-				}
-				var material = new THREE.ParticleBasicMaterial({color: 0xFFFFFF, size: 64, map: THREE.ImageUtils.loadTexture('particle.png'), blending: THREE.AdditiveBlending, transparent: true, vertexColors: true});
-				material.color.setHSV(1.0, 0.2, 0.8);
-				particles = new THREE.ParticleSystem(geometry, material);
-				particles.sortParticles = true;
-				particles.updateMatrix();
-				scene.add(particles);
+                }
+                var material = new THREE.ParticleBasicMaterial({color: 0xFFFFFF, size: 64, map: THREE.ImageUtils.loadTexture('particle.png'), blending: THREE.AdditiveBlending, transparent: true, vertexColors: true});
+                material.color.setHSV(1.0, 0.2, 0.8);
+                particles = new THREE.ParticleSystem(geometry, material);
+                particles.sortParticles = true;
+                particles.updateMatrix();
+                scene.add(particles);
                 
                 var plane = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000, 20, 20), new THREE.MeshBasicMaterial({color: 0x555555, wireframe: true}));
                 plane.rotation.x = -Math.PI/2;
                 scene.add(plane); 
-				
-				renderer = new THREE.WebGLRenderer({ clearAlpha: true, antialias: true });
+                
+                renderer = new THREE.WebGLRenderer({ clearAlpha: true, antialias: true });
                 //renderer.setClearColor(new THREE.Color(0, 1));
-				renderer.setSize(window.innerWidth, window.innerHeight);
-				container.appendChild(renderer.domElement);
-				
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                container.appendChild(renderer.domElement);
+                
                 stats = new Stats();
-				stats.domElement.style.position = 'absolute';
-				stats.domElement.style.top = '0px';
-				container.appendChild(stats.domElement);
+                stats.domElement.style.position = 'absolute';
+                stats.domElement.style.top = '0px';
+                container.appendChild(stats.domElement);
                 
                 mouse2D = new THREE.Vector3(0, 10000, 0.5);
-				document.addEventListener('mousemove', onMouseMove, false);
-				document.addEventListener('mousedown', onMouseDown, false);
-				document.addEventListener('mouseup', onMouseUp, false);
+                document.addEventListener('mousemove', onMouseMove, false);
+                document.addEventListener('mousedown', onMouseDown, false);
+                document.addEventListener('mouseup', onMouseUp, false);
                 document.addEventListener('keydown', onKeyDown, false);
                 document.addEventListener('keyup', onKeyUp, false);
-				window.addEventListener('resize', onWindowResize, false);
+                window.addEventListener('resize', onWindowResize, false);
+            
+                socket.on('p', plot);
 
-				animate();
-			}
-			
-			function onMouseMove(event) {
+                animate();
+            }
+            
+            function onMouseMove(event) {
                 mouse2D.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse2D.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 if (!input.mouseDown) return;
@@ -155,12 +156,12 @@
                         socket.emit('p', s);
                     }
                 }
-			}
+            }
 
             function plot(data) {
                 for (var i = 0, l = Math.min(particlesPerBatch, data.length); i < l; ++i) {
-                    var v = particles.geometry.vertices[roundRobin];
-                    roundRobin = roundRobin < 9999 ? roundRobin + 1 : 0;
+                    var v = particles.geometry.vertices[particleIndex];
+                    particleIndex = particleIndex < 9999 ? particleIndex + 1 : 0;
                     try {
                         v.position.x = data[i][0];
                         v.position.y = 0;
@@ -170,7 +171,6 @@
                     catch(e) {}
                 }
             }
-            socket.on('p', plot);
 
             function onMouseDown() {
                 input.mouseDown = true; 
@@ -196,17 +196,17 @@
                 else if (event.which == 16) input.shift = false;
             }
 
-			function onWindowResize(event) {
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-				renderer.setSize(window.innerWidth, window.innerHeight);
-			}
+            function onWindowResize(event) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
 
-			function animate() {
-				requestAnimationFrame(animate);
-				render();
-				stats.update();
-			}
+            function animate() {
+                requestAnimationFrame(animate);
+                render();
+                stats.update();
+            }
 
             function getRealIntersector(intersects) {
                 for(i = 0; i < intersects.length; i++) {
@@ -243,14 +243,14 @@
                 }
             }
 
-			function render() {
+            function render() {
                 processKeys();
                 var radius = Math.sin(ax) * spinRadius;
                 cameraTarget.x += (lookVector.x - cameraTarget.x) * 0.05;
                 cameraTarget.z += (lookVector.z - cameraTarget.z) * 0.05;
-				camera.position.x += (cameraTarget.x + Math.sin(ay) * radius - camera.position.x) * 0.05;
-				camera.position.z += (cameraTarget.z + Math.cos(ay) * radius - camera.position.z) * 0.05;
-				camera.position.y += (Math.cos(ax) * spinRadius - camera.position.y) * 0.05;
+                camera.position.x += (cameraTarget.x + Math.sin(ay) * radius - camera.position.x) * 0.05;
+                camera.position.z += (cameraTarget.z + Math.cos(ay) * radius - camera.position.z) * 0.05;
+                camera.position.y += (Math.cos(ax) * spinRadius - camera.position.y) * 0.05;
                 camera.lookAt(cameraTarget);
                 for (var i = 0, l = particles.geometry.vertices.length; i < l; ++i) {
                     var p = particles.geometry.vertices[i];
@@ -265,12 +265,12 @@
                     }
                 }
                 particles.geometry.__dirtyVertices = true;
-				renderer.render(scene, camera);
-			}
-		</script>
-	</head>
-	<body onload="init();">
-		<div id="info"></div>
+                renderer.render(scene, camera);
+            }
+        </script>
+    </head>
+    <body onload="init();">
+        <div id="info"></div>
         <div id="notice">Draw on the grid, please.</div>
         <div id="keys">
             Multiple users may be active.<br/>
@@ -286,5 +286,5 @@
         var sc_security="2d430983"; 
         </script>
         <script type="text/javascript" src="http://www.statcounter.com/counter/counter.js"></script>
-	</body>
+    </body>
 </html>
