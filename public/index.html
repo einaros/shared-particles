@@ -146,13 +146,12 @@
                     if (intersector) {
                         var s = [];
                         for (var i = 0; i < particlesPerBatch; ++i) {
-                            var v = particles.geometry.vertices[roundRobin];
-                            roundRobin = roundRobin < 9999 ? roundRobin + 1 : 0;
-                            v.position.x = intersector.point.x + Math.random() * 5;
-                            v.position.y = 0;
-                            v.position.z = intersector.point.z + Math.random() * 5;
-                            s.push([v.position.x, v.position.z]);
+                            s.push([
+                                intersector.point.x + Math.random() * 5, 
+                                intersector.point.z + Math.random() * 5
+                            ]);
                         }
+                        plot(s);
                         socket.emit('p', s);
                     }
                 }
@@ -166,6 +165,7 @@
                         v.position.x = data[i][0];
                         v.position.y = 0;
                         v.position.z = data[i][1];
+                        v.__vaporDelay = 300;
                     } 
                     catch(e) {}
                 }
@@ -255,8 +255,12 @@
                 for (var i = 0, l = particles.geometry.vertices.length; i < l; ++i) {
                     var p = particles.geometry.vertices[i];
                     if (p.position.y < 10000) {
-                        p.position.x += Math.random() * 3;
-                        p.position.z += Math.random() * 3;
+                        if (p.__vaporDelay && p.__vaporDelay > 0) {
+                            p.__vaporDelay -= 1;
+                            continue;
+                        }
+                        //p.position.x += Math.random() * 3;
+                        //p.position.z += Math.random() * 3;
                         p.position.y += Math.random() * 3;
                     }
                 }
