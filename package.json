@@ -1,11 +1,11 @@
 {
   "author": "Einar Otto Stangvik <einaros@gmail.com>",
-  "name": "trig-paperjs",
-  "version": "0.0.1",
-  "homepage": "http://js.2x.io/trig",
+  "name": "shared-particles",
+  "version": "0.0.2",
+  "homepage": "http://wire.2x.io",
   "repository": {
     "type": "git",
-    "url": "git://github.com/einaros/trig-paperjs.git"
+    "url": "git://github.com/einaros/shared-particles.git"
   },
   "engines": {
     "node": ">v0.4.0"
