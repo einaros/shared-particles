@@ -23,7 +23,7 @@
             shift: false,
             mouseDown: false
         }
-      , socket = io.connect();
+      , socket = io.connect('http://91.203.207.145');
 
     function init() {
         if (!Detector.webgl) {
@@ -115,7 +115,7 @@
             } 
             catch(e) {}
         }
-        if (send) socket.emit('p', s);
+        if (send) socket.emit('p', data);
     }
 
     function onMouseDown() {
@@ -215,4 +215,5 @@
     }
 
     window.plot = plot; // might as well let people script the particle plotting
+    window.init = init;
 })();
