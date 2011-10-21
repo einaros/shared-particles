@@ -8,11 +8,13 @@
       , renderer
       , particles
       , mouse2D
+      , px
+      , pz
       , ay = 0
       , ax = Math.PI/4
       , spinRadius = 1500
       , particleCount = 20000
-      , particlesPerBatch = 5
+      , particlesPerBatch = 50 
       , particleIndex = 0
       , lookVector = new THREE.Vector3(0, 0, 0)
       , input = {
@@ -89,17 +91,26 @@
         var ray = projector.pickingRay(mouse2D.clone(), camera);
         var intersects = ray.intersectScene(scene);
         if (intersects.length > 0) {
-            var intersector = getRealIntersector(intersects);
-            if (intersector) {
-                var s = [];
-                for (var i = 0; i < particlesPerBatch; ++i) {
-                    s.push([
-                        intersector.point.x + Math.random() * 5, 
-                        intersector.point.z + Math.random() * 5
-                    ]);
-                }
-                plot(s, true);
+            var intersector = intersects[0];
+            var s = [];
+            var move = {
+                x: intersector.point.x,
+                y: intersector.point.z,
+                px: px,
+                py: pz,
+            };
+            move.dist = Math.sqrt(Math.pow(move.x - move.px, 2) + Math.pow(move.y - move.py, 2))
+            px = intersector.point.x;
+            pz = intersector.point.z;
+            var pts = smoothener.getSmoothPointSpread(move, 10);
+            for (var i = 0, l = pts.length; i < l; ++i) {
+                var pt = pts[i];
+                s.push([
+                    pt.x + Math.random() * 5 - 2.5, 
+                    pt.y + Math.random() * 5 - 2.5, 
+                ]);
             }
+            plot(s, true);
         }
     }
 
@@ -120,6 +131,15 @@
 
     function onMouseDown() {
         input.mouseDown = true; 
+        mouse2D.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse2D.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        var ray = projector.pickingRay(mouse2D.clone(), camera);
+        var intersects = ray.intersectScene(scene);
+        if (intersects.length > 0) {
+            var intersector = intersects[0];
+            px = intersector.x;
+            py = intersector.y;
+        }
     }
 
     function onMouseUp() {
@@ -152,14 +172,6 @@
         requestAnimationFrame(animate);
         render();
         stats.update();
-    }
-
-    function getRealIntersector(intersects) {
-        for(i = 0; i < intersects.length; i++) {
-            var intersector = intersects[i];
-            return intersector;
-        }
-        return null;
     }
 
     function processKeys() {
