@@ -138,7 +138,7 @@
         if (intersects.length > 0) {
             var intersector = intersects[0];
             px = intersector.x;
-            py = intersector.y;
+            pz = intersector.z;
         }
     }
 
