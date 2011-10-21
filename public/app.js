@@ -137,8 +137,8 @@
         var intersects = ray.intersectScene(scene);
         if (intersects.length > 0) {
             var intersector = intersects[0];
-            px = intersector.x;
-            pz = intersector.z;
+            px = intersector.point.x;
+            pz = intersector.point.z;
         }
     }
 
