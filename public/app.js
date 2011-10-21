@@ -129,7 +129,7 @@
         if (send) socket.emit('p', data);
     }
 
-    function onMouseDown() {
+    function onMouseDown(event) {
         input.mouseDown = true; 
         mouse2D.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse2D.y = -(event.clientY / window.innerHeight) * 2 + 1;
